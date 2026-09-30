@@ -19,9 +19,27 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
 io.on('connection', (socket) => {
-  socket.on('join-room', (room) => socket.join(room));
-  socket.on('draw-event', ({ room, point, author, name }) => {
-    socket.to(room).emit('blueprint-update', { author, name, points: [point] });
+  socket.on('join-room', (room) => {
+    if (typeof room === 'string') {
+      socket.join(room);
+    }
+  });
+
+  socket.on('draw-event', (payload = {}) => {
+    const { room, author, name, point } = payload;
+    const expectedRoom = `blueprints.${author}.${name}`;
+
+    if (
+      !author ||
+      !name ||
+      room !== expectedRoom ||
+      !Number.isFinite(point?.x) ||
+      !Number.isFinite(point?.y)
+    ) {
+      return;
+    }
+
+    io.to(room).emit('blueprint-update', { author, name, point });
   });
 });
 
